@@ -3,6 +3,12 @@ import os
 import math
 import time
 
+# Storing board
+with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
+    land_data = file.readlines()
+with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+    building_data = file.readlines()
+
 # Initialize the game
 pygame.init()
 width = 640
@@ -97,8 +103,8 @@ load_assets()
 
 #Map
 def render_land(PlrX: int, PlrY: int):
-    with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
-        land_data = file.readlines()
+    #with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
+    #    land_data = file.readlines()
     for y, line in enumerate(land_data, yoffset - PlrY):
         for x, char in enumerate(line.strip(), xoffset - PlrX):
             if x > screen.get_width() // 16:
@@ -113,8 +119,8 @@ def render_land(PlrX: int, PlrY: int):
             break
 
 def render_buildings(PlrX: int, PlrY: int):
-    with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
-        building_data = file.readlines()
+    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+    #    building_data = file.readlines()
     for y, line in enumerate(building_data, yoffset - PlrY):
         for x, char in enumerate(line.strip(), xoffset - PlrX):
             if x > screen.get_width() // 16:
@@ -143,8 +149,8 @@ def move_player(direction: str):
                 playerX += 1
 
 def get_tile(x: int, y: int):
-    with open(os.path.join('Save', 'Map', 'land.txt'), 'r') as file:
-        land_data = file.readlines()
+    #with open(os.path.join('Save', 'Map', 'land.txt'), 'r') as file:
+    #    land_data = file.readlines()
     if 0 <= y < mapHeight:
         line = land_data[y].strip()
         if 0 <= x < mapWidth:
@@ -152,8 +158,8 @@ def get_tile(x: int, y: int):
     return None
 
 def get_building(x: int, y: int):
-    with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
-        building_data = file.readlines()
+    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+    #   building_data = file.readlines()
     if 0 <= y < mapHeight:
         line = building_data[y].strip()
         if 0 <= x < mapWidth:
@@ -161,22 +167,22 @@ def get_building(x: int, y: int):
     return None
 
 def set_tile(x: int, y: int, tile: str):
-        with open(os.path.join('Save', 'Map', 'land.txt'), 'r') as file:
-            lines = file.readlines()
-        targetLine = list(lines[y])
-        targetLine[x] = tile
-        lines[y] = ''.join(targetLine)
-        with open(os.path.join('Save', 'Map', 'land.txt'), 'w') as file:
-            file.writelines(lines)
+    #with open(os.path.join('Save', 'Map', 'land.txt'), 'r') as file:
+    #   lines = file.readlines()
+    targetLine = list(land_data[y])
+    targetLine[x] = tile
+    land_data[y] = ''.join(targetLine)
+    #with open(os.path.join('Save', 'Map', 'land.txt'), 'w') as file:
+    #    file.writelines(lines)
 
 def set_building(x: int, y: int, building: str):
-        with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
-            lines = file.readlines()
-        targetLine = list(lines[y])
-        targetLine[x] = building
-        lines[y] = ''.join(targetLine)
-        with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
-            file.writelines(lines)
+    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+    #    lines = file.readlines()
+    targetLine = list(building_data[y])
+    targetLine[x] = building
+    building_data[y] = ''.join(targetLine)
+    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
+    #    file.writelines(lines)
 
 def get_cardinal(x: int, y: int):
     return [
@@ -217,8 +223,8 @@ def get_resource(type: str):
     return int(open(os.path.join('Save', 'Data', 'Stats.txt')).readlines()[resourceTypes.get(type)].strip())
 
 def count_building(type: str, ID: int):
-    with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
-        building_data = file.readlines()
+    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+    #    building_data = file.readlines()
     count = 0
     iter1 = 0
     for list_row in building_data:
@@ -492,7 +498,12 @@ while running:
         screen.blit(play_text, (width // 2 - play_text.get_width() // 2, height // 2))
 
 
-    print(clock.get_fps())
+    #print(clock.get_fps())
     pygame.display.flip()
     clock.tick(60)
+#Saving board
+with open(os.path.join('Save', 'Map', 'Land.txt'), 'w') as file:
+    file.write('\n'.join(land_data))
+with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
+    file.write('\n'.join(building_data))
 pygame.quit()
