@@ -503,7 +503,7 @@ while running:
     clock.tick(60)
 #Saving board
 with open(os.path.join('Save', 'Map', 'Land.txt'), 'w') as file:
-    file.write('\n'.join(land_data))
+    file.write(''.join(land_data))
 with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
-    file.write('\n'.join(building_data))
+    file.write(''.join(building_data))
 pygame.quit()
