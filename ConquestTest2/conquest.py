@@ -2,7 +2,8 @@ import pygame
 import os
 import math
 import time
-
+import socket
+import threading
 # Storing board
 with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
     land_data = file.readlines()
@@ -374,7 +375,52 @@ def wall_cost(x, y):
         cost = 10
         cost += 2 ** int(building-32)
         return cost
-    
+def lfi(sock):
+    ulo=time.time()
+    while time.time()-ulo<0.1:
+        pass
+    sock.sendall('RECV'.encode())
+def listen_for_messages(sock):
+    done=0
+    while True:
+        try:
+            
+            message = sock.recv(1048576).decode()
+            
+            if message and '..' in message:
+                message=message[2:]
+                for i in range(int(len(message)/3)):
+                    x=0
+                    while x<len(message):
+                        if ord(message[x])>99:
+                            x1=ord(message[x])-100
+                            y=ord(message[x+1])
+                            rt=''
+                            for i in message[x+2:].split(chr(0))[0]:
+                                set_building(x1,y,i)
+                                x1+=1
+                            x+=len(message[x+2:].split(chr(0))[0])+3
+                        else:
+                            set_building(ord(message[x]),ord(message[x+1]),message[x+2])
+                            x+=3
+            elif message:
+                eval(message)
+        except:
+            print("[ERROR] Lost connection to server.")
+            sock.close()
+            break
+def initclient(server_ip='127.0.0.1', server_port=12345):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((server_ip, server_port))
+        sock.sendall("JOIN".encode())
+        threading.Thread(target=listen_for_messages, args=(sock,), daemon=True).start()
+        threading.Thread(target=lfi, args=(sock,), daemon=True).start()
+        return sock
+    except:
+        print("No server started, starting offline")
+        return None
+sock=initclient()
 
 # Main game loop
 while running:
@@ -507,3 +553,6 @@ with open(os.path.join('Save', 'Map', 'Land.txt'), 'w') as file:
 with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
     file.write(''.join(building_data))
 pygame.quit()
+if sock:
+    sock.sendall("EXIT".encode())
+    sock.close()
