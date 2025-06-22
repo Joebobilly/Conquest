@@ -16,6 +16,9 @@ def handle_client(conn, addr):
                 clients.remove(conn)
                 conn.close()
                 break
+            if data == "RECV2":
+                with open('Land.txt') as f:
+                    conn.sendall(('..'+str(f.read())).encode())
             if data == "RECV":
                 try:
                     with open('Buildings2.txt') as q:

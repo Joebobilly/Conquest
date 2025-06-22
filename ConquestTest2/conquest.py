@@ -6,7 +6,8 @@ import socket
 import threading
 
 global sock
-
+global land_data
+global building_data
 # Storing board
 with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
     land_data = file.readlines()
@@ -390,17 +391,29 @@ def wall_cost(x, y):
 
 def lfi(sock):
     ulo=time.time()
-    while time.time()-ulo<0.1:
-        pass
+    #while time.time()-ulo<0.1:
+    #    pass
     sock.sendall('RECV'.encode())
+    #while time.time()-ulo<0.50:
+    #    pass
+    sock.sendall('RECV2'.encode())
+def repland(newland):
+    for i in range(len(land_data)):
+        land_data[i]=newland[i]
 def listen_for_messages(sock):
     done=0
+    recc=0
     while True:
         try:
             
             message = sock.recv(1048576).decode()
-            
-            if message and '..' in message:
+            if '..' in message and recc==1:
+                recc+=1
+                print('received')
+                repland(message[2:].split('\n'))
+                continue
+            if message and '..' in message and recc==0:
+                recc=1
                 message=message[2:]
                 for i in range(int(len(message)/3)):
                     x=0
@@ -419,7 +432,6 @@ def listen_for_messages(sock):
             elif message:
                 eval(message)
         except Exception as e:
-            print(e)
             print("[ERROR] Lost connection to server.")
             sock.close()
             break
@@ -568,10 +580,15 @@ while running:
     clock.tick(60)
 #Saving board
 with open(os.path.join('Save', 'Map', 'Land.txt'), 'w') as file:
-    file.write(''.join(land_data))
+    if '\n' in land_data[0]:
+        file.write(''.join(land_data))
+    else:
+        file.write('\n'.join(land_data))
 with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
     file.write(''.join(building_data))
 pygame.quit()
 if sock:
-    sock.sendall("EXIT".encode())
-    sock.close()
+    try:
+        sock.sendall("EXIT".encode())
+        sock.close()
+    except: pass
