@@ -4,6 +4,9 @@ import math
 import time
 import socket
 import threading
+
+global sock
+
 # Storing board
 with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
     land_data = file.readlines()
@@ -30,7 +33,7 @@ mapWidth = 100
 mapHeight = 100
 global location, selectedBuilding
 location = 'menu'
-selectedBuilding = 'C'
+selectedBuilding = '1'
 global powerTime, materialsTime
 powerTime = time.time()
 materialsTime = time.time()
@@ -71,8 +74,8 @@ def load_assets():
         '2': mine
     }
     literalBuildingDict = {
-        'C': 'Training Camp',
-        'M': 'Mine'
+        '1': 'Training Camp',
+        '2': 'Mine'
     }
 
     #Walls
@@ -176,12 +179,14 @@ def set_tile(x: int, y: int, tile: str):
     #with open(os.path.join('Save', 'Map', 'land.txt'), 'w') as file:
     #    file.writelines(lines)
 
-def set_building(x: int, y: int, building: str):
+def set_building(x: int, y: int, building: str, sock=None):
     #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
     #    lines = file.readlines()
     targetLine = list(building_data[y])
     targetLine[x] = building
     building_data[y] = ''.join(targetLine)
+    if sock:
+        sock.sendall(("Hey building update: "+str(x)+', '+str(y)).encode())
     #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
     #    file.writelines(lines)
 
@@ -321,24 +326,23 @@ def attack_cost(x: int, y: int, ID: int, water: bool):
 def tool_build(x: int, y: int, building: str, ID: int):
     cost = construct_cost(building, ID)
     materials = get_resource('materials')
-    if get_building(x, y) == '-' and get_tile(x, y) == str(ID):
+    if get_building(x, y) == chr(0) and get_tile(x, y) == str(ID):
         print('passed')
         if materials >= cost:
-            set_building(x, y, building)
+            if sock:
+                set_building(x, y, chr(int(building)),sock=sock)
+            else:
+                set_building(x, y, chr(int(building)))
             change_resource('materials', -cost)
 
 def construct_cost(building: str, ID: int):
-    if building=='C':
-        building=chr(1)
-    elif building=='M':
-        building=chr(2)
-    count = count_building(building, ID)
+    count = count_building(chr(int(building)), ID)
     cost = 0
-    if ord(building) == 1:
+    if building == '1':
         cost = 25
         cost += count * 25
         return cost
-    elif ord(building) == 2:
+    elif building == '2':
         cost = 20
         cost += count * 20
         return cost
@@ -375,6 +379,7 @@ def wall_cost(x, y):
         cost = 10
         cost += 2 ** int(building-32)
         return cost
+
 def lfi(sock):
     ulo=time.time()
     while time.time()-ulo<0.1:
@@ -405,7 +410,8 @@ def listen_for_messages(sock):
                             x+=3
             elif message:
                 eval(message)
-        except:
+        except Exception as e:
+            print(e)
             print("[ERROR] Lost connection to server.")
             sock.close()
             break
@@ -417,11 +423,11 @@ def initclient(server_ip='127.0.0.1', server_port=12345):
         threading.Thread(target=listen_for_messages, args=(sock,), daemon=True).start()
         threading.Thread(target=lfi, args=(sock,), daemon=True).start()
         return sock
-    except:
+    except Exception as e:
+        print(e)
         print("No server started, starting offline")
         return None
 sock=initclient()
-
 # Main game loop
 while running:
     # Check for events
@@ -454,9 +460,9 @@ while running:
                 if event.key == pygame.K_q: #Build wall
                     build_wall(playerX, playerY, playerID)
                 if event.key == pygame.K_1:
-                    selectedBuilding = 'C'
+                    selectedBuilding = '1'
                 if event.key == pygame.K_2:
-                    selectedBuilding = 'M'
+                    selectedBuilding = '2'
 
 
     # Sprinting controls
