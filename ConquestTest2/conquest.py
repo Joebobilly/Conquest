@@ -9,11 +9,12 @@ global sock
 global land_data
 global building_data
 # Storing board
-with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
-    land_data = file.readlines()
-with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
-    building_data = file.readlines()
-
+#with open(os.path.join('Save', 'Map', 'Land.txt'), 'r') as file:
+#    land_data = file.readlines()
+#with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+#    building_data = file.readlines()
+land_data=['-'*100 for i in range(100)]
+building_data=[chr(0)*100 for i in range(100)]
 # Initialize the game
 pygame.init()
 width = 640
@@ -135,7 +136,8 @@ def render_buildings(PlrX: int, PlrY: int):
             if x > screen.get_width() // 16:
                 break
             if ord(char)>32:
-                screen.blit(wallDict.get(ord(char)-32), (x * 16, y * 16))
+                try: screen.blit(wallDict.get(ord(char)-32), (x * 16, y * 16))
+                except: print(ord(char)-32)
             elif not ord(char)==0:
                 screen.blit(buildingDict.get(str(ord(char))), (x * 16, y * 16))
         if y > screen.get_height() // 16:
@@ -174,16 +176,32 @@ def get_building(x: int, y: int):
         if 0 <= x < mapWidth:
             return line[x]
     return None
-
-def set_tile(x: int, y: int, tile: str):
+def set_tile_nosend(x: int, y: int, tile: str):
     #with open(os.path.join('Save', 'Map', 'land.txt'), 'r') as file:
     #   lines = file.readlines()
     targetLine = list(land_data[y])
     targetLine[x] = tile
     land_data[y] = ''.join(targetLine)
+def set_tile(x: int, y: int, tile: str):
+    #with open(os.path.join('Save', 'Map', 'land.txt'), 'r') as file:
+    #   lines = file.readlines()
+    if sock:
+        try: sock.sendall(('T'+chr(x)+chr(y)+tile).encode())
+        except Exception as e:
+            print(e)
+            return
+    targetLine = list(land_data[y])
+    targetLine[x] = tile
+    land_data[y] = ''.join(targetLine)
     #with open(os.path.join('Save', 'Map', 'land.txt'), 'w') as file:
     #    file.writelines(lines)
-
+def set_building_nosend(x: int, y: int, building: str, sock=None):
+    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
+    #    lines = file.readlines()
+    targetLine = list(building_data[y])
+    targetLine[x] = building
+    building_data[y] = ''.join(targetLine)    #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
+    #    file.writelines(lines)
 def set_building(x: int, y: int, building: str, sock=None):
     #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'r') as file:
     #    lines = file.readlines()
@@ -191,7 +209,7 @@ def set_building(x: int, y: int, building: str, sock=None):
     targetLine[x] = building
     building_data[y] = ''.join(targetLine)
     if sock:
-        sock.sendall(("Hey building update: "+str(x)+', '+str(y)).encode())
+        sock.sendall(('B'+chr(x)+chr(y)+building).encode())
     #with open(os.path.join('Save', 'Map', 'Buildings2.txt'), 'w') as file:
     #    file.writelines(lines)
 
@@ -368,12 +386,12 @@ def build_wall(x, y, ID):
         if ord(building) == 0:
             cost = wall_cost(x, y)
             if materials >= cost:
-                set_building(x, y, chr(33))
+                set_building(x, y, chr(33),sock=sock)
                 change_resource('materials', -cost)
         elif ord(building)>32:
             cost = wall_cost(x, y)
             if materials >= cost:
-                set_building(x, y, chr(ord(building)+1))
+                set_building(x, y, chr(ord(building)+1),sock=sock)
                 change_resource('materials', -cost)
                 
 
@@ -432,6 +450,8 @@ def listen_for_messages(sock):
             elif message:
                 eval(message)
         except Exception as e:
+            print(e)
+            a=0/0
             print("[ERROR] Lost connection to server.")
             sock.close()
             break
