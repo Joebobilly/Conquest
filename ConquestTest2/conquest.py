@@ -65,17 +65,21 @@ def load_assets():
     }
 
     # Buildings
-    global camp, mine
+    global camp, mine, materialStorage
     global buildingDict, literalBuildingDict
     camp = pygame.image.load(os.path.join('Assets', 'Buildings', 'camp.png'))
     mine = pygame.image.load(os.path.join('Assets', 'Buildings', 'mine.png'))
+    materialStorage = pygame.image.load(os.path.join('Assets', 'Buildings', 'material_storage.png'))
     buildingDict = {
         '1': camp,
-        '2': mine
+        '2': mine,
+        '3': materialStorage
+
     }
     literalBuildingDict = {
         '1': 'Training Camp',
-        '2': 'Mine'
+        '2': 'Mine',
+        '3': 'Material Storage'
     }
 
     #Walls
@@ -338,12 +342,16 @@ def tool_build(x: int, y: int, building: str, ID: int):
 def construct_cost(building: str, ID: int):
     count = count_building(chr(int(building)), ID)
     cost = 0
-    if building == '1':
+    if building == '1': #Camp
         cost = 25
         cost += count * 25
         return cost
-    elif building == '2':
+    elif building == '2': #Mine
         cost = 20
+        cost += count * 20
+        return cost
+    elif building == '3': #Material Storage
+        cost = 100
         cost += count * 20
         return cost
     else:
@@ -463,6 +471,8 @@ while running:
                     selectedBuilding = '1'
                 if event.key == pygame.K_2:
                     selectedBuilding = '2'
+                if event.key == pygame.K_3:
+                    selectedBuilding = '3'
 
 
     # Sprinting controls
@@ -528,6 +538,9 @@ while running:
 
         # Materials
         if time.time() - materialsTime > 1:
+            additionalMax = count_building(chr(3), playerID) * 20
+            print(additionalMax)
+            set_resource('maxMaterials', 100 + additionalMax)
             maxMaterials = get_resource('maxMaterials')
             materials = get_resource('materials')
             if materials < maxMaterials:
