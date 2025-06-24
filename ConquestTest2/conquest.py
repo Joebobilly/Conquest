@@ -550,10 +550,13 @@ while running:
         screen.blit(attackCost, (0, 16))
         buildingDisplay = UItext.render("Selected Building: " + str(literalBuildingDict.get(selectedBuilding)) + ' (' + str(construct_cost(selectedBuilding, playerID)) + ')', True, (255, 170, 0))
         screen.blit(buildingDisplay, (0, 48))
-        if not get_building(playerX, playerY) == '-' and not get_building(playerX, playerY).isdigit() or not get_tile(playerX, playerY) == str(playerID):
+        focusedBuilding = get_building(playerX, playerY)
+        if not get_tile(playerX, playerY) == str(playerID):
+            wallCost = UItext.render("Wall Cost: N/A", True, (128, 128, 12))
+        elif not ord(focusedBuilding) > 31:
             wallCost = UItext.render("Wall Cost: N/A", True, (128, 128, 12))
         else:
-            wallCost = UItext.render("Wall Cost: " + str(wall_cost(playerX, playerY)), True, (255, 170, 0))
+            wallCost = UItext.render("Wall Cost: " + str(wall_cost(playerX, playerY)), True, (128, 128, 0))
         screen.blit(wallCost, (0, 64))
 
         # Resource loop
@@ -571,7 +574,6 @@ while running:
         # Materials
         if time.time() - materialsTime > 1:
             additionalMax = count_building(chr(3), playerID) * 20
-            print(additionalMax)
             set_resource('maxMaterials', 100 + additionalMax)
             maxMaterials = get_resource('maxMaterials')
             materials = get_resource('materials')
