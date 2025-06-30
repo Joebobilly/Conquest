@@ -67,25 +67,30 @@ def load_assets():
     }
 
     # Buildings
-    global camp, mine, materialStorage
+    global camp, mine, materialStorage, powerStorage, fortifier
     global buildingDict, literalBuildingDict
     camp = pygame.image.load(os.path.join('Assets', 'Buildings', 'camp.png'))
     mine = pygame.image.load(os.path.join('Assets', 'Buildings', 'mine.png'))
     materialStorage = pygame.image.load(os.path.join('Assets', 'Buildings', 'material_storage.png'))
+    powerStorage = pygame.image.load(os.path.join('Assets', 'Buildings', 'power_storage.png'))
+    fortifier = pygame.image.load(os.path.join('Assets', 'Buildings', 'fortifier.png'))
     buildingDict = {
         '1': camp,
         '2': mine,
-        '3': materialStorage
-
+        '3': materialStorage,
+        '4': powerStorage,
+        '5': fortifier
     }
     literalBuildingDict = {
         '1': 'Training Camp',
         '2': 'Mine',
-        '3': 'Material Storage'
+        '3': 'Material Storage',
+        '4': 'Power Storage',
+        '5': 'Fortifier'
     }
 
     #Walls
-    global wall1, wall2, wall3, wall4
+    global wall1, wall2, wall3, wall4, wall5, wall6, wall7, wall8, wall9, wall10, wall11, wall12, wall13, wall14, wall15, wall16, wall17, wall18, wall19, wall20, wall21, wall22, wall23, wall24, wall25
     global wallDict
     wall1 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall1.png'))
     wall2 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall2.png'))
@@ -96,6 +101,22 @@ def load_assets():
     wall7 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall7.png'))
     wall8 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall8.png'))
     wall9 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall9.png'))
+    wall10 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall10.png'))
+    wall11 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall11.png'))
+    wall12 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall12.png'))
+    wall13 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall13.png'))
+    wall14 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall14.png'))
+    wall15 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall15.png'))
+    wall16 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall16.png'))
+    wall17 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall17.png'))
+    wall18 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall18.png'))
+    wall19 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall19.png'))
+    wall20 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall20.png'))
+    wall21 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall21.png'))
+    wall22 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall22.png'))
+    wall23 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall23.png'))
+    wall24 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall24.png'))
+    wall25 = pygame.image.load(os.path.join('Assets', 'Walls', 'wall25.png'))
     wallDict = {
         1: wall1,
         2: wall2,
@@ -105,7 +126,23 @@ def load_assets():
         6: wall6,
         7: wall7,
         8: wall8,
-        9: wall9
+        9: wall9,
+        10: wall10,
+        11: wall11,
+        12: wall12,
+        13: wall13,
+        14: wall14,
+        15: wall15,
+        16: wall16,
+        17: wall17,
+        18: wall18,
+        19: wall19,
+        20: wall20,
+        21: wall21,
+        22: wall22,
+        23: wall23,
+        24: wall24,
+        25: wall25
     }
 load_assets()
 
@@ -319,6 +356,19 @@ def attack(x: int, y: int, ID: int, water: bool):
                 set_tile(x, y, str(ID))
             change_resource('power', -attackCost)
 
+def fortifierCount(x: int, y: int):
+    radius = 3
+    horizontalList = list(range(x - radius, x + radius))
+    verticalList = list(range(range(y - radius, y + radius)))
+    for ix in horizontalList:
+        for iy in verticalList:
+            building = get_building(ix, iy)
+            if ord(building) == 5:
+                pass
+
+def fortifierCost(cost: int, y: int, x: int):
+    count = fortifierCount(x, y)
+
 def attack_cost(x: int, y: int, ID: int, water: bool):
     tile = get_tile(x, y)
     if tile == '-':
@@ -336,6 +386,7 @@ def attack_cost(x: int, y: int, ID: int, water: bool):
             cost = 15
             wallFee = int(building) ** 2
             cost += wallFee
+            cost = fortifierCost(cost, x, y)
             if water:
                 cost += 15
             return cost
@@ -372,6 +423,14 @@ def construct_cost(building: str, ID: int):
     elif building == '3': #Material Storage
         cost = 100
         cost += count * 20
+        return cost
+    elif building == '4': #Power Storage
+        cost = 120
+        cost += count * 40
+        return cost
+    elif building == '5': #Fortifier
+        cost = 200
+        cost += count * 100
         return cost
     else:
         return None
@@ -499,12 +558,16 @@ while running:
                     tool_build(playerX, playerY, selectedBuilding, playerID)
                 if event.key == pygame.K_q: #Build wall
                     build_wall(playerX, playerY, playerID)
-                if event.key == pygame.K_1:
+                if event.key == pygame.K_1: #Camp
                     selectedBuilding = '1'
-                if event.key == pygame.K_2:
+                if event.key == pygame.K_2: #Mine
                     selectedBuilding = '2'
-                if event.key == pygame.K_3:
+                if event.key == pygame.K_3: #Material Storage
                     selectedBuilding = '3'
+                if event.key == pygame.K_4: #Power Storage
+                    selectedBuilding = '4'
+                if event.key == pygame.K_5: #Fortifier
+                    selectedBuilding = '5'
 
 
     # Sprinting controls
@@ -563,6 +626,8 @@ while running:
 
         # Power
         if time.time() - powerTime > 4:
+            additionalMax = count_building(chr(4), playerID) * 20
+            set_resource('maxPower', 100 + additionalMax)
             maxPower = get_resource('maxPower')
             power = get_resource('power')
             if power < maxPower:
