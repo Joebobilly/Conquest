@@ -12,3 +12,4 @@ class ServerConfig:
     max_power: int = 100
     power_regen_per_tick: int = 1
     tick_seconds: float = 2.0
+    session_ttl_seconds: int = 60 * 60 * 24 * 7

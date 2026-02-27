@@ -11,6 +11,7 @@ def main() -> None:
     parser.add_argument("--db", default="data/conquest.db")
     parser.add_argument("--width", type=int, default=100)
     parser.add_argument("--height", type=int, default=100)
+    parser.add_argument("--session-ttl", type=int, default=60 * 60 * 24 * 7)
     args = parser.parse_args()
 
     config = ServerConfig(
@@ -19,6 +20,7 @@ def main() -> None:
         db_path=args.db,
         world_width=args.width,
         world_height=args.height,
+        session_ttl_seconds=args.session_ttl,
     )
     run_server(config)
 
