@@ -18,7 +18,7 @@ This repository now starts from an **authoritative server** foundation for a per
 ## Run the server
 
 ```bash
-python -m server_app --host 0.0.0.0 --port 12345 --db data/conquest.db --width 100 --height 100
+python -m server_app --host 0.0.0.0 --port 12345 --db data/conquest.db --width 100 --height 100 --session-ttl 604800
 ```
 
 ## Packet protocol (newline-delimited JSON)
@@ -41,6 +41,12 @@ All messages are JSON objects with `type` and optional `payload`.
 
 ```json
 {"type":"auth.resume","payload":{"token":"..."}}
+```
+
+### Logout
+
+```json
+{"type":"auth.logout","payload":{"token":"..."}}
 ```
 
 ### Get user state (requires auth)
@@ -69,9 +75,26 @@ python scripts/packet_cli.py --host 127.0.0.1 --port 12345
 
 Then paste JSON requests one-per-line.
 
+## Standalone client (separate from server package)
+
+The repository includes `client_app/`, a standalone reference client that only depends on the published JSON packet protocol.
+It does **not** import game rules from `server_app.world` and can be replaced by community clients without server changes.
+
+Run it with:
+
+```bash
+python -m client_app --host 127.0.0.1 --port 12345
+```
+
+Or via the script shim:
+
+```bash
+python scripts/client_repl.py --host 127.0.0.1 --port 12345
+```
+
 ## What is intentionally in-scope right now
 
-- Account registration/login and session tokens.
+- Account registration/login, expiring session tokens, and logout.
 - Authoritative land ownership state in SQLite.
 - Power resource and regeneration.
 - Adjacency rule for claiming neutral land.
