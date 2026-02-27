@@ -11,114 +11,74 @@ This repository now starts from an **authoritative server** foundation for a per
 ## Current project structure
 
 - `server_app/`: authoritative TCP+JSON server.
-- `scripts/packet_cli.py`: terminal client for manual packet testing.
+- `scripts/packet_cli.py`: tiny terminal client for manual packet testing.
 - `tests/`: protocol and world rule tests.
 - Legacy prototype folders (`ConquestTest2/`, `SOCKETTEST/`) are kept for historical reference.
 
 ## Run the server
 
 ```bash
-python3 -m server_app --host 0.0.0.0 --port 12345 --db data/conquest.db --width 100 --height 100
+python -m server_app --host 0.0.0.0 --port 12345 --db data/conquest.db --width 100 --height 100
 ```
 
-## Protocol (newline-delimited JSON)
+## Packet protocol (newline-delimited JSON)
 
-Message envelope:
+All messages are JSON objects with `type` and optional `payload`.
 
-```json
-{"type":"...","request_id":"...","protocol_version":1,"payload":{}}
-```
-
-- `request_id` and `protocol_version` are recommended on every request.
-- Responses include either `{"type":"ok", ...}` or `{"type":"error", "code":..., "message":...}`.
-
-### Authentication flow
-
-Register:
+### Register
 
 ```json
 {"type":"auth.register","payload":{"username":"alice","password":"supersecret"}}
 ```
 
-Login:
+### Login
 
 ```json
 {"type":"auth.login","payload":{"username":"alice","password":"supersecret"}}
 ```
 
-The login response returns a session `token`.
-For protected calls on a new socket, include token either at top level or in payload.
-
-Resume session:
+### Resume session
 
 ```json
 {"type":"auth.resume","payload":{"token":"..."}}
 ```
 
-### World calls
-
-World meta:
+### Get user state (requires auth)
 
 ```json
-{"type":"world.meta"}
+{"type":"world.state"}
 ```
 
-User state (protected):
+### Claim neutral land tile (requires auth)
 
 ```json
-{"type":"world.state","token":"..."}
+{"type":"action.claim","payload":{"x":10,"y":3}}
 ```
 
-World region snapshot:
+### Fetch world region
 
 ```json
 {"type":"world.region","payload":{"min_x":0,"min_y":0,"max_x":20,"max_y":20}}
 ```
 
-World patches since version:
-
-```json
-{"type":"world.patch_since","payload":{"from_version":0}}
-```
-
-### Actions
-
-Claim neutral tile (protected):
-
-```json
-{"type":"action.claim","token":"...","payload":{"x":10,"y":3}}
-```
-
-Attack enemy tile (protected):
-
-```json
-{"type":"action.attack","token":"...","payload":{"x":11,"y":3}}
-```
-
-Place building on owned tile (protected):
-
-```json
-{"type":"action.build","token":"...","payload":{"x":10,"y":3,"building_type":"camp"}}
-```
-
 ## Terminal testing
 
 ```bash
-python3 scripts/packet_cli.py --host 127.0.0.1 --port 12345
+python scripts/packet_cli.py --host 127.0.0.1 --port 12345
 ```
 
 Then paste JSON requests one-per-line.
-`packet_cli` auto-fills `request_id` and `protocol_version` if omitted.
 
-## In scope now
+## What is intentionally in-scope right now
 
-- Account registration/login and expiring sessions.
+- Account registration/login and session tokens.
 - Authoritative land ownership state in SQLite.
-- Power resource regeneration and spend checks.
-- Neutral claim, enemy attack-capture, and simple building placement.
-- World versioning and patch event feed for incremental sync.
+- Power resource and regeneration.
+- Adjacency rule for claiming neutral land.
 
-## Still out of scope
+## What is intentionally out-of-scope for this first step
 
-- Co-op/factions, diplomacy, advanced building progression.
-- TLS transport and production deployment hardening.
+- Co-op/factions, attacks on enemy land, buildings, walls, diplomacy.
+- TLS transport, advanced anti-cheat, and production deployment hardening.
+
+Those systems should be layered on top of this server-first base.

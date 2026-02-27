@@ -5,10 +5,6 @@ import argparse
 import json
 import socket
 import sys
-import uuid
-
-
-DEFAULT_PROTOCOL_VERSION = 1
 
 
 def recv_line(sock: socket.socket) -> dict:
@@ -22,8 +18,6 @@ def recv_line(sock: socket.socket) -> dict:
 
 
 def send_and_recv(sock: socket.socket, payload: dict) -> dict:
-    payload.setdefault("protocol_version", DEFAULT_PROTOCOL_VERSION)
-    payload.setdefault("request_id", str(uuid.uuid4()))
     sock.sendall((json.dumps(payload) + "\n").encode())
     return recv_line(sock)
 
@@ -37,7 +31,6 @@ def main() -> None:
     with socket.create_connection((args.host, args.port)) as sock:
         print(json.dumps(recv_line(sock), indent=2))
         print("Enter JSON objects; one per line. Ctrl-D to exit.")
-        print("Tip: request_id/protocol_version will be auto-filled if missing.")
         for line in sys.stdin:
             line = line.strip()
             if not line:
