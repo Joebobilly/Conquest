@@ -1,10 +1,18 @@
 import socketserver
 import threading
+import time
 from typing import Any
 
 from . import auth, db
 from .config import ServerConfig
 from .protocol import parse_json_line, serialize_message
+from .validators import (
+    validate_action_claim,
+    validate_auth_login,
+    validate_auth_register,
+    validate_auth_resume,
+    validate_world_region,
+)
 from .world import WorldService
 
 
@@ -37,6 +45,8 @@ class ConquestTCPServer(socketserver.ThreadingTCPServer):
         self.config = config
         self.db_lock = threading.Lock()
         db.initialize(config.db_path, config.world_width, config.world_height)
+        with db.connect(config.db_path) as conn:
+            self._cleanup_expired_sessions(conn)
         super().__init__((config.host, config.port), ConquestRequestHandler)
 
     def dispatch(self, handler: ConquestRequestHandler, request: dict[str, Any]) -> dict[str, Any]:
@@ -45,6 +55,8 @@ class ConquestTCPServer(socketserver.ThreadingTCPServer):
 
         with self.db_lock:
             with db.connect(self.config.db_path) as conn:
+                if msg_type != "auth.resume":
+                    self._cleanup_expired_sessions(conn)
                 world = WorldService(
                     conn,
                     default_power=self.config.default_power,
@@ -54,38 +66,37 @@ class ConquestTCPServer(socketserver.ThreadingTCPServer):
                 )
 
                 if msg_type == "auth.register":
-                    return self._register(conn, world, payload)
+                    return self._register(conn, world, validate_auth_register(payload))
                 if msg_type == "auth.login":
-                    return self._login(handler, conn, payload)
+                    return self._login(handler, conn, validate_auth_login(payload))
                 if msg_type == "auth.resume":
-                    return self._resume(handler, conn, payload)
+                    return self._resume(handler, conn, validate_auth_resume(payload))
+                if msg_type == "auth.logout":
+                    return self._logout(handler, conn, validate_auth_resume(payload))
                 if msg_type == "world.meta":
                     return world.get_world_meta()
                 if msg_type == "world.state":
                     self._require_auth(handler)
                     return world.get_user_state(handler.user_id)
                 if msg_type == "world.region":
-                    return {"tiles": world.world_patch_since(
-                        min_x=int(payload.get("min_x", 0)),
-                        min_y=int(payload.get("min_y", 0)),
-                        max_x=payload.get("max_x"),
-                        max_y=payload.get("max_y"),
-                    )}
+                    region = validate_world_region(payload)
+                    return {"tiles": world.world_patch_since(**region)}
                 if msg_type == "action.claim":
                     self._require_auth(handler)
+                    claim = validate_action_claim(payload)
                     return world.claim_tile(
                         handler.user_id,
-                        int(payload["x"]),
-                        int(payload["y"]),
-                        power_cost=int(payload.get("power_cost", 5)),
+                        claim["x"],
+                        claim["y"],
+                        power_cost=claim["power_cost"],
                     )
                 if msg_type == "ping":
                     return {"pong": True}
                 raise ValueError(f"Unknown message type: {msg_type}")
 
     def _register(self, conn, world: WorldService, payload: dict[str, Any]) -> dict[str, Any]:
-        username = str(payload["username"]).strip()
-        password = str(payload["password"])
+        username = payload["username"].strip()
+        password = payload["password"]
         if len(username) < 3:
             raise ValueError("Username must be at least 3 characters")
         if len(password) < 8:
@@ -107,37 +118,67 @@ class ConquestTCPServer(socketserver.ThreadingTCPServer):
         return {"username": username, "spawn": {"x": spawn_x, "y": spawn_y}}
 
     def _login(self, handler: ConquestRequestHandler, conn, payload: dict[str, Any]) -> dict[str, Any]:
-        username = str(payload["username"]).strip()
-        password = str(payload["password"])
+        username = payload["username"].strip()
+        password = payload["password"]
         row = conn.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,)).fetchone()
         if row is None or not auth.verify_password(password, row["password_hash"]):
             raise ValueError("Invalid username or password")
 
         token = auth.new_session_token()
-        conn.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, row["id"]))
+        now = time.time()
+        expires_at = now + self.config.session_ttl_seconds
+        conn.execute(
+            "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+            (token, row["id"], now, expires_at),
+        )
         conn.commit()
 
         handler.user_id = int(row["id"])
         handler.username = username
-        return {"token": token, "user_id": handler.user_id, "username": username}
+        return {
+            "token": token,
+            "user_id": handler.user_id,
+            "username": username,
+            "expires_at": expires_at,
+        }
 
     def _resume(self, handler: ConquestRequestHandler, conn, payload: dict[str, Any]) -> dict[str, Any]:
-        token = str(payload["token"])
+        token = payload["token"]
         row = conn.execute(
-            "SELECT users.id, users.username FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.token = ?",
+            "SELECT users.id, users.username, sessions.expires_at FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.token = ?",
             (token,),
         ).fetchone()
         if row is None:
             raise ValueError("Invalid session token")
+        if row["expires_at"] <= time.time():
+            conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+            conn.commit()
+            raise ValueError("Session token expired")
 
         handler.user_id = int(row["id"])
         handler.username = row["username"]
         return {"user_id": handler.user_id, "username": handler.username}
 
+    def _logout(self, handler: ConquestRequestHandler, conn, payload: dict[str, Any]) -> dict[str, Any]:
+        token = payload["token"]
+        deleted = conn.execute("DELETE FROM sessions WHERE token = ?", (token,)).rowcount
+        conn.commit()
+        if handler.user_id is not None:
+            handler.user_id = None
+            handler.username = None
+        if deleted == 0:
+            raise ValueError("Invalid session token")
+        return {"logged_out": True}
+
     @staticmethod
     def _require_auth(handler: ConquestRequestHandler) -> None:
         if handler.user_id is None:
             raise ValueError("Authentication required")
+
+    @staticmethod
+    def _cleanup_expired_sessions(conn) -> None:
+        conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (time.time(),))
+        conn.commit()
 
 
 def run_server(config: ServerConfig) -> None:
