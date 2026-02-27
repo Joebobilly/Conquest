@@ -75,6 +75,23 @@ python scripts/packet_cli.py --host 127.0.0.1 --port 12345
 
 Then paste JSON requests one-per-line.
 
+## Standalone client (separate from server package)
+
+The repository includes `client_app/`, a standalone reference client that only depends on the published JSON packet protocol.
+It does **not** import game rules from `server_app.world` and can be replaced by community clients without server changes.
+
+Run it with:
+
+```bash
+python -m client_app --host 127.0.0.1 --port 12345
+```
+
+Or via the script shim:
+
+```bash
+python scripts/client_repl.py --host 127.0.0.1 --port 12345
+```
+
 ## What is intentionally in-scope right now
 
 - Account registration/login, expiring session tokens, and logout.
