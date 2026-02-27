@@ -19,12 +19,37 @@ Commands:
   world.meta
   world.state
   world.region <min_x> <min_y> [max_x] [max_y]
+  world.grid               # render entire known map as ASCII grid
   claim <x> <y> [power_cost]
   raw <json-packet>        # send packet by explicit message type/payload
   token                    # print saved token
   help
   quit / exit
 """.strip()
+
+
+def _tile_to_ascii(tile: dict) -> str:
+    owner_id = tile.get("owner_user_id")
+    if owner_id is not None:
+        return str(owner_id)
+    if tile.get("terrain") == "water":
+        return "-"
+    return "0"
+
+
+def render_world_grid(meta: dict, tiles: list[dict]) -> str:
+    width = int(meta["width"])
+    height = int(meta["height"])
+    tile_lookup = {(tile["x"], tile["y"]): tile for tile in tiles}
+
+    rows = []
+    for y in range(height):
+        chars = []
+        for x in range(width):
+            tile = tile_lookup.get((x, y), {"terrain": "water", "owner_user_id": None})
+            chars.append(_tile_to_ascii(tile))
+        rows.append("".join(chars))
+    return "\n".join(rows)
 
 
 def _print_json(data: dict) -> None:
@@ -104,6 +129,15 @@ def main() -> None:
                                 max_y=int(parts[4]),
                             )
                         )
+                elif cmd == "world.grid" and len(parts) == 1:
+                    meta = client.world_meta()
+                    region = client.world_region(
+                        min_x=0,
+                        min_y=0,
+                        max_x=int(meta["width"]) - 1,
+                        max_y=int(meta["height"]) - 1,
+                    )
+                    print(render_world_grid(meta, region.get("tiles", [])))
                 elif cmd == "claim" and len(parts) in {3, 4}:
                     x, y = int(parts[1]), int(parts[2])
                     power_cost = int(parts[3]) if len(parts) == 4 else None
